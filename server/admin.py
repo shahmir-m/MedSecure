@@ -34,8 +34,8 @@ def admin_exec():
 def admin_render():
     """Render a custom greeting template."""
     username = request.args.get('username', 'guest')
-    template = "<h1>Welcome, " + username + "!</h1>"
-    return render_template_string(template)
+    template = "<h1>Welcome, {{ username }}!</h1>"
+    return render_template_string(template, username=username)
 
 
 @flaskapp.route('/admin/redirect')
