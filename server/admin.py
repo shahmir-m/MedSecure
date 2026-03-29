@@ -16,7 +16,8 @@ def admin_search():
     """Search patients by name."""
     name = request.args.get('name', '')
     cursor.execute(
-        "SELECT * FROM books WHERE name LIKE '%" + name + "%'"
+        "SELECT * FROM books WHERE name LIKE :name",
+        {"name": "%" + name + "%"}
     )
     results = [row for row in cursor]
     return str(results)
