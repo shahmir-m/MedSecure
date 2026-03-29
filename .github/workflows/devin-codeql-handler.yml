@@ -1,0 +1,83 @@
+name: "Assign CodeQL Alerts to Devin"
+
+on:
+  code_scanning_alert:
+    types: [ created ]
+
+jobs:
+  assign-to-devin:
+    name: Create Devin session for CodeQL alert
+    runs-on: ubuntu-latest
+    if: github.event.alert.tool.name == 'CodeQL'
+    permissions:
+      security-events: read
+      contents: read
+
+    steps:
+      - name: Create Devin session for alert
+        env:
+          DEVIN_API_KEY: ${{ secrets.DEVIN_API_KEY }}
+          DEVIN_ORG_ID: ${{ secrets.DEVIN_ORG_ID }}
+          DEVIN_PLAYBOOK_ID: ${{ secrets.DEVIN_PLAYBOOK_ID }}
+          ALERT_RULE_ID: ${{ github.event.alert.rule.id }}
+          ALERT_RULE_DESC: ${{ github.event.alert.rule.description }}
+          ALERT_SEVERITY: ${{ github.event.alert.rule.severity }}
+          ALERT_FILE_PATH: ${{ github.event.alert.most_recent_instance.location.path }}
+          ALERT_START_LINE: ${{ github.event.alert.most_recent_instance.location.start_line }}
+          ALERT_END_LINE: ${{ github.event.alert.most_recent_instance.location.end_line }}
+          ALERT_HTML_URL: ${{ github.event.alert.html_url }}
+          ALERT_REF: ${{ github.event.alert.most_recent_instance.ref }}
+          GH_REPOSITORY: ${{ github.repository }}
+        run: |
+          PROMPT=$(cat <<EOF
+          Fix a CodeQL vulnerability in the ${GH_REPOSITORY} repository.
+
+          ## CodeQL Alert Details
+          - **Rule**: ${ALERT_RULE_ID}
+          - **Description**: ${ALERT_RULE_DESC}
+          - **Severity**: ${ALERT_SEVERITY}
+          - **File**: ${ALERT_FILE_PATH}
+          - **Lines**: ${ALERT_START_LINE}-${ALERT_END_LINE}
+          - **Alert URL**: ${ALERT_HTML_URL}
+          - **Ref**: ${ALERT_REF}
+
+          ## Instructions
+          1. Clone the ${GH_REPOSITORY} repository
+          2. Review the vulnerable code at ${ALERT_FILE_PATH}:${ALERT_START_LINE}-${ALERT_END_LINE}
+          3. Apply a minimal, targeted fix for the ${ALERT_RULE_ID} CodeQL rule
+          4. Create a PR with the fix targeting main
+          EOF
+          )
+
+          # Build JSON payload
+          PAYLOAD=$(jq -n \
+            --arg prompt "$PROMPT" \
+            --arg playbook_id "$DEVIN_PLAYBOOK_ID" \
+            '{
+              prompt: $prompt,
+              playbook_id: $playbook_id
+            }')
+
+          # Create Devin session via API
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            "https://api.devin.ai/v3/organizations/${DEVIN_ORG_ID}/sessions" \
+            -H "Authorization: Bearer ${DEVIN_API_KEY}" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD")
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | head -n -1)
+
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            SESSION_URL=$(echo "$BODY" | jq -r '.url // "N/A"')
+            SESSION_ID=$(echo "$BODY" | jq -r '.session_id // "N/A"')
+            echo "Devin session created successfully"
+            echo "   Session ID: ${SESSION_ID}"
+            echo "   Session URL: ${SESSION_URL}"
+            echo "   Rule: ${ALERT_RULE_ID}"
+            echo "   File: ${ALERT_FILE_PATH}:${ALERT_START_LINE}"
+          else
+            echo "Failed to create Devin session (HTTP ${HTTP_CODE})"
+            echo "   Response: ${BODY}"
+            exit 1
+          fi
