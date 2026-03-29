@@ -2,6 +2,7 @@
 import os
 import subprocess
 import hashlib
+from urllib.parse import urlparse
 
 from flask import request, redirect, make_response, render_template_string
 
@@ -42,6 +43,9 @@ def admin_render():
 def admin_redirect():
     """Redirect the user to a given URL."""
     target = request.args.get('url', '/')
+    parsed = urlparse(target)
+    if parsed.netloc or parsed.scheme:
+        return "Invalid redirect target", 400
     return redirect(target)
 
 
