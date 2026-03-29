@@ -8,7 +8,6 @@ jobs:
   assign-to-devin:
     name: Create Devin session for CodeQL alert
     runs-on: ubuntu-latest
-    if: github.event.alert.tool.name == 'CodeQL'
     permissions:
       security-events: read
       contents: read
