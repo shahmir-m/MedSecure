@@ -8,7 +8,7 @@ from flask import request, redirect, make_response, render_template_string
 from server.webapp import flaskapp, cursor
 
 
-ADMIN_SECRET = "SuperSecret123!"
+ADMIN_SECRET = os.environ.get('ADMIN_SECRET', '')
 
 
 @flaskapp.route('/admin/search')
