@@ -19,33 +19,32 @@ jobs:
           DEVIN_API_KEY: ${{ secrets.DEVIN_API_KEY }}
           DEVIN_ORG_ID: ${{ secrets.DEVIN_ORG_ID }}
           DEVIN_PLAYBOOK_ID: ${{ secrets.DEVIN_PLAYBOOK_ID }}
+          ALERT_RULE_ID: ${{ github.event.alert.rule.id }}
+          ALERT_RULE_DESC: ${{ github.event.alert.rule.description }}
+          ALERT_SEVERITY: ${{ github.event.alert.rule.severity }}
+          ALERT_FILE_PATH: ${{ github.event.alert.most_recent_instance.location.path }}
+          ALERT_START_LINE: ${{ github.event.alert.most_recent_instance.location.start_line }}
+          ALERT_END_LINE: ${{ github.event.alert.most_recent_instance.location.end_line }}
+          ALERT_HTML_URL: ${{ github.event.alert.html_url }}
+          ALERT_REF: ${{ github.event.alert.most_recent_instance.ref }}
+          GH_REPOSITORY: ${{ github.repository }}
         run: |
-          RULE_ID="${{ github.event.alert.rule.id }}"
-          RULE_DESC="${{ github.event.alert.rule.description }}"
-          SEVERITY="${{ github.event.alert.rule.severity }}"
-          FILE_PATH="${{ github.event.alert.most_recent_instance.location.path }}"
-          START_LINE="${{ github.event.alert.most_recent_instance.location.start_line }}"
-          END_LINE="${{ github.event.alert.most_recent_instance.location.end_line }}"
-          ALERT_URL="${{ github.event.alert.html_url }}"
-          REPO="${{ github.repository }}"
-          REF="${{ github.event.alert.most_recent_instance.ref }}"
-
           PROMPT=$(cat <<EOF
-          Fix a CodeQL vulnerability in the ${REPO} repository.
+          Fix a CodeQL vulnerability in the ${GH_REPOSITORY} repository.
 
           ## CodeQL Alert Details
-          - **Rule**: ${RULE_ID}
-          - **Description**: ${RULE_DESC}
-          - **Severity**: ${SEVERITY}
-          - **File**: ${FILE_PATH}
-          - **Lines**: ${START_LINE}-${END_LINE}
-          - **Alert URL**: ${ALERT_URL}
-          - **Ref**: ${REF}
+          - **Rule**: ${ALERT_RULE_ID}
+          - **Description**: ${ALERT_RULE_DESC}
+          - **Severity**: ${ALERT_SEVERITY}
+          - **File**: ${ALERT_FILE_PATH}
+          - **Lines**: ${ALERT_START_LINE}-${ALERT_END_LINE}
+          - **Alert URL**: ${ALERT_HTML_URL}
+          - **Ref**: ${ALERT_REF}
 
           ## Instructions
-          1. Clone the ${REPO} repository
-          2. Review the vulnerable code at ${FILE_PATH}:${START_LINE}-${END_LINE}
-          3. Apply a minimal, targeted fix for the ${RULE_ID} CodeQL rule
+          1. Clone the ${GH_REPOSITORY} repository
+          2. Review the vulnerable code at ${ALERT_FILE_PATH}:${ALERT_START_LINE}-${ALERT_END_LINE}
+          3. Apply a minimal, targeted fix for the ${ALERT_RULE_ID} CodeQL rule
           4. Create a PR with the fix targeting main
           EOF
           )
@@ -72,13 +71,13 @@ jobs:
           if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
             SESSION_URL=$(echo "$BODY" | jq -r '.url // "N/A"')
             SESSION_ID=$(echo "$BODY" | jq -r '.session_id // "N/A"')
-            echo "✅ Devin session created successfully"
+            echo "Devin session created successfully"
             echo "   Session ID: ${SESSION_ID}"
             echo "   Session URL: ${SESSION_URL}"
-            echo "   Rule: ${RULE_ID}"
-            echo "   File: ${FILE_PATH}:${START_LINE}"
+            echo "   Rule: ${ALERT_RULE_ID}"
+            echo "   File: ${ALERT_FILE_PATH}:${ALERT_START_LINE}"
           else
-            echo "❌ Failed to create Devin session (HTTP ${HTTP_CODE})"
+            echo "Failed to create Devin session (HTTP ${HTTP_CODE})"
             echo "   Response: ${BODY}"
             exit 1
           fi
