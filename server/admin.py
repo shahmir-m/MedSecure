@@ -22,11 +22,20 @@ def admin_search():
     return str(results)
 
 
+ALLOWED_COMMANDS = {
+    'uptime': ['uptime'],
+    'hostname': ['hostname'],
+    'date': ['date'],
+}
+
+
 @flaskapp.route('/admin/exec')
 def admin_exec():
     """Run a system diagnostic command."""
-    cmd = request.args.get('cmd', 'echo ok')
-    output = subprocess.check_output(cmd, shell=True)
+    cmd_name = request.args.get('cmd', 'date')
+    if cmd_name not in ALLOWED_COMMANDS:
+        return "Command not allowed", 400
+    output = subprocess.check_output(ALLOWED_COMMANDS[cmd_name])
     return output
 
 
